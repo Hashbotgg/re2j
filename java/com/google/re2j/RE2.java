@@ -109,6 +109,7 @@ class RE2 {
   // required at start of match
   final int numSubexp;
   boolean longest;
+  ConfusableMatcher confusableMatcher;
 
   String prefix; // required UTF-16 prefix in unanchored matches
   byte[] prefixUTF8; // required UTF-8 prefix in unanchored matches
@@ -257,13 +258,13 @@ class RE2 {
   // doExecute() finds the leftmost match in the input and returns
   // the position of its subexpressions.
   // Derived from exec.go.
-  private int[] doExecute(MachineInput in, int pos, int anchor, int ncap) {
+  private int[] doExecute(MachineInput in, int pos, int anchor, int ncap, ConfusableMatcher confusableMatcher) {
     Machine m = get();
     // The Treiber stack cannot reuse nodes, unless the node to be reused has only ever been at
     // the bottom of the stack (i.e., next == null).
     boolean isNew = false;
     if (m == null) {
-      m = new Machine(this);
+      m = new Machine(this, confusableMatcher );
       isNew = true;
     } else if (m.next != null) {
       m = new Machine(m);
@@ -280,7 +281,7 @@ class RE2 {
    * Returns true iff this regexp matches the string {@code s}.
    */
   boolean match(CharSequence s) {
-    return doExecute(MachineInput.fromUTF16(s), 0, UNANCHORED, 0) != null;
+    return doExecute(MachineInput.fromUTF16(s), 0, UNANCHORED, 0, confusableMatcher) != null;
   }
 
   boolean match(CharSequence input, int start, int end, int anchor, int[] group, int ngroup) {
@@ -316,7 +317,7 @@ class RE2 {
         input.getEncoding() == Encoding.UTF_16
             ? MachineInput.fromUTF16(input.asCharSequence(), 0, end)
             : MachineInput.fromUTF8(input.asBytes(), 0, end);
-    int[] groupMatch = doExecute(machineInput, start, anchor, 2 * ngroup);
+    int[] groupMatch = doExecute(machineInput, start, anchor, 2 * ngroup,confusableMatcher);
 
     if (groupMatch == null) {
       return false;
@@ -333,7 +334,7 @@ class RE2 {
    */
   // This is visible for testing.
   boolean matchUTF8(byte[] b) {
-    return doExecute(MachineInput.fromUTF8(b), 0, UNANCHORED, 0) != null;
+    return doExecute(MachineInput.fromUTF8(b), 0, UNANCHORED, 0,confusableMatcher) != null;
   }
 
   /**
@@ -405,7 +406,7 @@ class RE2 {
     MachineInput input = MachineInput.fromUTF16(src);
     int numReplaces = 0;
     while (searchPos <= src.length()) {
-      int[] a = doExecute(input, searchPos, UNANCHORED, 2);
+      int[] a = doExecute(input, searchPos, UNANCHORED, 2,confusableMatcher);
       if (a == null || a.length == 0) {
         break; // no more matches
       }
@@ -504,7 +505,7 @@ class RE2 {
       n = end + 1;
     }
     for (int pos = 0, i = 0, prevMatchEnd = -1; i < n && pos <= end; ) {
-      int[] matches = doExecute(input, pos, UNANCHORED, prog.numCap);
+      int[] matches = doExecute(input, pos, UNANCHORED, prog.numCap,confusableMatcher);
       if (matches == null || matches.length == 0) {
         break;
       }
@@ -580,7 +581,7 @@ class RE2 {
    */
   // This is visible for testing.
   byte[] findUTF8(byte[] b) {
-    int[] a = doExecute(MachineInput.fromUTF8(b), 0, UNANCHORED, 2);
+    int[] a = doExecute(MachineInput.fromUTF8(b), 0, UNANCHORED, 2,confusableMatcher);
     if (a == null) {
       return null;
     }
@@ -596,7 +597,7 @@ class RE2 {
    */
   // This is visible for testing.
   int[] findUTF8Index(byte[] b) {
-    int[] a = doExecute(MachineInput.fromUTF8(b), 0, UNANCHORED, 2);
+    int[] a = doExecute(MachineInput.fromUTF8(b), 0, UNANCHORED, 2,confusableMatcher);
     if (a == null) {
       return null;
     }
@@ -614,7 +615,7 @@ class RE2 {
    */
   // This is visible for testing.
   String find(String s) {
-    int[] a = doExecute(MachineInput.fromUTF16(s), 0, UNANCHORED, 2);
+    int[] a = doExecute(MachineInput.fromUTF16(s), 0, UNANCHORED, 2, confusableMatcher);
     if (a == null) {
       return "";
     }
@@ -631,7 +632,7 @@ class RE2 {
    */
   // This is visible for testing.
   int[] findIndex(String s) {
-    return doExecute(MachineInput.fromUTF16(s), 0, UNANCHORED, 2);
+    return doExecute(MachineInput.fromUTF16(s), 0, UNANCHORED, 2, confusableMatcher);
   }
 
   /**
@@ -644,7 +645,7 @@ class RE2 {
    */
   // This is visible for testing.
   byte[][] findUTF8Submatch(byte[] b) {
-    int[] a = doExecute(MachineInput.fromUTF8(b), 0, UNANCHORED, prog.numCap);
+    int[] a = doExecute(MachineInput.fromUTF8(b), 0, UNANCHORED, prog.numCap, confusableMatcher);
     if (a == null) {
       return null;
     }
@@ -667,7 +668,7 @@ class RE2 {
    */
   // This is visible for testing.
   int[] findUTF8SubmatchIndex(byte[] b) {
-    return pad(doExecute(MachineInput.fromUTF8(b), 0, UNANCHORED, prog.numCap));
+    return pad(doExecute(MachineInput.fromUTF8(b), 0, UNANCHORED, prog.numCap, confusableMatcher));
   }
 
   /**
@@ -680,7 +681,7 @@ class RE2 {
    */
   // This is visible for testing.
   String[] findSubmatch(String s) {
-    int[] a = doExecute(MachineInput.fromUTF16(s), 0, UNANCHORED, prog.numCap);
+    int[] a = doExecute(MachineInput.fromUTF16(s), 0, UNANCHORED, prog.numCap, confusableMatcher);
     if (a == null) {
       return null;
     }
@@ -703,7 +704,7 @@ class RE2 {
    */
   // This is visible for testing.
   int[] findSubmatchIndex(String s) {
-    return pad(doExecute(MachineInput.fromUTF16(s), 0, UNANCHORED, prog.numCap));
+    return pad(doExecute(MachineInput.fromUTF16(s), 0, UNANCHORED, prog.numCap, confusableMatcher));
   }
 
   /**

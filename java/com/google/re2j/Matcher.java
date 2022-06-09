@@ -328,6 +328,20 @@ public final class Matcher {
     return genMatch(start, RE2.UNANCHORED);
   }
 
+  public boolean find(ConfusableMatcher confusableMatcher) {
+    int start = 0;
+    if (hasMatch) {
+      start = groups[1];
+      if (groups[0] == groups[1]) { // empty match - nudge forward
+        start++;
+      }
+    }
+    pattern.re2().confusableMatcher = confusableMatcher;
+    return genMatch(start, RE2.UNANCHORED);
+  }
+
+
+
   /**
    * Matches the input against the pattern (unanchored), starting at a specified position. If there
    * is a match, {@code find} sets the match state to describe it.

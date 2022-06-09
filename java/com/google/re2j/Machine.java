@@ -84,6 +84,8 @@ class Machine {
   // Compiled program.
   private final Prog prog;
 
+  private ConfusableMatcher confusableMatcher;
+
   // Two queues for runq, nextq.
   private final Queue q0, q1;
 
@@ -107,7 +109,8 @@ class Machine {
   /**
    * Constructs a matching Machine for the specified {@code RE2}.
    */
-  Machine(RE2 re2) {
+  Machine(RE2 re2, ConfusableMatcher confusableMatcher) {
+    this.confusableMatcher = confusableMatcher;
     this.prog = re2.prog;
     this.re2 = re2;
     this.q0 = new Queue(prog.numInst());
@@ -118,6 +121,7 @@ class Machine {
   /** Copy constructor, but does not include {@code next} */
   Machine(Machine copy) {
     // Make sure to include any new fields here
+    this.confusableMatcher = copy.confusableMatcher;
     this.re2 = copy.re2;
     this.prog = copy.prog;
     this.q0 = copy.q0;
@@ -250,20 +254,20 @@ class Machine {
           // Have match; finished exploring alternatives.
           break;
         }
-        if (!re2.prefix.isEmpty() && rune1 != re2.prefixRune && in.canCheckPrefix()) {
-          // Match requires literal prefix; fast search for it.
-          int advance = in.index(re2, pos);
-          if (advance < 0) {
-            break;
-          }
-          pos += advance;
-          r = in.step(pos);
-          rune = r >> 3;
-          width = r & 7;
-          r = in.step(pos + width);
-          rune1 = r >> 3;
-          width1 = r & 7;
-        }
+//        if (!re2.prefix.isEmpty() && rune1 != re2.prefixRune && in.canCheckPrefix()) {
+//          // Match requires literal prefix; fast search for it.
+//          int advance = in.index(re2, pos);
+//          if (advance < 0) {
+//            break;
+//          }
+//          pos += advance;
+//          r = in.step(pos);
+//          rune = r >> 3;
+//          width = r & 7;
+//          r = in.step(pos + width);
+//          rune1 = r >> 3;
+//          width1 = r & 7;
+//        }
       }
       if (!matched && (pos == 0 || anchor == RE2.UNANCHORED)) {
         // If we are anchoring at begin then only add threads that begin
@@ -346,11 +350,11 @@ class Machine {
           break;
 
         case Inst.RUNE:
-          add = i.matchRune(c);
+          add = i.matchRune(c,confusableMatcher);
           break;
 
         case Inst.RUNE1:
-          add = c == i.runes[0];
+          add = c == i.runes[0] || confusableMatcher.getConfusableCharacters(i.runes[0],c);
           break;
 
         case Inst.RUNE_ANY:

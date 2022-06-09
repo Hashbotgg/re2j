@@ -9,6 +9,9 @@
 
 package com.google.re2j;
 
+import java.util.List;
+import java.util.stream.Collectors;
+
 /**
  * MachineInput abstracts different representations of the input text supplied to the Machine. It
  * provides one-character lookahead.
@@ -175,11 +178,13 @@ abstract class MachineInput {
     final CharSequence str;
     final int start;
     final int end;
+    final List<Integer> codepoints;
 
     public UTF16Input(CharSequence str, int start, int end) {
       this.str = str;
       this.start = start;
       this.end = end;
+      this.codepoints = str.codePoints().boxed().collect(Collectors.toList());
     }
 
     @Override
@@ -219,12 +224,6 @@ abstract class MachineInput {
     }
 
     private int indexOf(CharSequence hayStack, String needle, int pos) {
-      if (hayStack instanceof String) {
-        return ((String) hayStack).indexOf(needle, pos);
-      }
-      if (hayStack instanceof StringBuilder) {
-        return ((StringBuilder) hayStack).indexOf(needle, pos);
-      }
       return indexOfFallback(hayStack, needle, pos);
     }
 
@@ -240,7 +239,7 @@ abstract class MachineInput {
         return fromIndex;
       }
 
-      char first = needle.charAt(0);
+      int first = needle.charAt(0);
       int max = hayStack.length() - needle.length();
 
       for (int i = fromIndex; i <= max; i++) {

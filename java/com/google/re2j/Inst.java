@@ -12,7 +12,7 @@ package com.google.re2j;
 /**
  * A single instruction in the regular expression virtual machine.
  *
- * @see http://swtch.com/~rsc/regexp/regexp2.html
+ * @see <a href="http://swtch.com/~rsc/regexp/regexp2.html">...</a>
  */
 final class Inst {
 
@@ -45,17 +45,17 @@ final class Inst {
 
   // MatchRune returns true if the instruction matches (and consumes) r.
   // It should only be called when op == InstRune.
-  boolean matchRune(int r) {
+  boolean matchRune(int r, ConfusableMatcher confusableMatcher) {
     // Special case: single-rune slice is from literal string, not char
     // class.
     if (runes.length == 1) {
       int r0 = runes[0];
-      if (r == r0) {
+      if (r == r0 || confusableMatcher.getConfusableCharacters(r0, r)) {
         return true;
       }
       if ((arg & RE2.FOLD_CASE) != 0) {
         for (int r1 = Unicode.simpleFold(r0); r1 != r0; r1 = Unicode.simpleFold(r1)) {
-          if (r == r1) {
+          if (r == r1 || confusableMatcher.getConfusableCharacters(r1, r)) {
             return true;
           }
         }
